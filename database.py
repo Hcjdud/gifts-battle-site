@@ -1,34 +1,28 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, update, delete, func
-from config import config
-from models import Base, User, Case, CaseItem, CaseOpening, Transaction
 from datetime import datetime
 import random
-import os
 
-# Определяем тип БД
-DATABASE_URL = config.get_database_url()
-is_sqlite = DATABASE_URL.startswith('sqlite')
+from models import Base, User, Case, CaseItem, CaseOpening, Transaction
 
-# Для SQLite нужны особые настройки
-if is_sqlite:
-    engine = create_async_engine(
-        DATABASE_URL, 
-        echo=True,
-        connect_args={"check_same_thread": False}  # Важно для SQLite
-    )
-else:
-    engine = create_async_engine(DATABASE_URL, echo=True)
+# Используем SQLite
+DATABASE_URL = "sqlite+aiosqlite:///./gifts.db"
+
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=True,
+    connect_args={"check_same_thread": False}
+)
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("✅ База данных инициализирована")
+    print("✅ База данных готова")
 
-# Пользователи
+# ===== ПОЛЬЗОВАТЕЛИ =====
 async def get_user(user_id: int):
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User).where(User.id == user_id))
@@ -41,13 +35,17 @@ async def get_user_by_username(username: str):
 
 async def create_user(username: str, ip: str = None):
     async with AsyncSessionLocal() as session:
-        user = User(username=username, ip_address=ip, last_seen=datetime.utcnow())
+        user = User(
+            username=username, 
+            ip_address=ip, 
+            last_seen=datetime.utcnow()
+        )
         session.add(user)
         await session.commit()
         await session.refresh(user)
         return user
 
-async def update_balance(user_id: int, amount: float, transaction_type: str = "admin"):
+async def update_balance(user_id: int, amount: float):
     async with AsyncSessionLocal() as session:
         user = await session.get(User, user_id)
         if not user:
@@ -59,7 +57,7 @@ async def update_balance(user_id: int, amount: float, transaction_type: str = "a
         tx = Transaction(
             user_id=user_id,
             amount=amount,
-            type=transaction_type
+            type="admin"
         )
         session.add(tx)
         
@@ -71,39 +69,24 @@ async def get_all_users():
         result = await session.execute(select(User).order_by(User.balance.desc()))
         return result.scalars().all()
 
-# Кейсы
-async def create_case(name: str, description: str, price: float, image_url: str, 
-                     background_color: str = "#1a1a1a", sort_order: int = 0):
+# ===== КЕЙСЫ =====
+async def create_case(name: str, description: str, price: float, image_url: str):
     async with AsyncSessionLocal() as session:
         case = Case(
             name=name,
             description=description,
             price=price,
-            image_url=image_url,
-            background_color=background_color,
-            sort_order=sort_order
+            image_url=image_url
         )
         session.add(case)
         await session.commit()
         await session.refresh(case)
         return case
 
-async def update_case(case_id: int, **kwargs):
-    async with AsyncSessionLocal() as session:
-        await session.execute(
-            update(Case).where(Case.id == case_id).values(**kwargs)
-        )
-        await session.commit()
-
 async def delete_case(case_id: int):
     async with AsyncSessionLocal() as session:
         await session.execute(delete(Case).where(Case.id == case_id))
         await session.commit()
-
-async def get_case(case_id: int):
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(Case).where(Case.id == case_id))
-        return result.scalar_one_or_none()
 
 async def get_all_cases(active_only: bool = True):
     async with AsyncSessionLocal() as session:
@@ -113,32 +96,20 @@ async def get_all_cases(active_only: bool = True):
         result = await session.execute(query.order_by(Case.sort_order))
         return result.scalars().all()
 
-# Предметы кейсов
-async def add_case_item(case_id: int, name: str, value: float, probability: float, 
-                       image_url: str = None, description: str = None, 
-                       rarity: str = "common", color: str = "#ffffff"):
+# ===== ПРЕДМЕТЫ =====
+async def add_case_item(case_id: int, name: str, value: float, probability: float, image_url: str = None):
     async with AsyncSessionLocal() as session:
         item = CaseItem(
             case_id=case_id,
             name=name,
-            description=description,
-            image_url=image_url,
             value=value,
             probability=probability,
-            rarity=rarity,
-            color=color
+            image_url=image_url
         )
         session.add(item)
         await session.commit()
         await session.refresh(item)
         return item
-
-async def update_case_item(item_id: int, **kwargs):
-    async with AsyncSessionLocal() as session:
-        await session.execute(
-            update(CaseItem).where(CaseItem.id == item_id).values(**kwargs)
-        )
-        await session.commit()
 
 async def delete_case_item(item_id: int):
     async with AsyncSessionLocal() as session:
@@ -152,7 +123,7 @@ async def get_case_items(case_id: int):
         )
         return result.scalars().all()
 
-# Открытие кейсов
+# ===== ОТКРЫТИЕ КЕЙСОВ =====
 async def open_case(user_id: int, case_id: int, is_test: bool = False):
     async with AsyncSessionLocal() as session:
         user = await session.get(User, user_id)
@@ -170,7 +141,7 @@ async def open_case(user_id: int, case_id: int, is_test: bool = False):
         if not is_test and user.balance < case.price:
             return {"error": "Insufficient balance"}
         
-        # Выбор предмета по вероятности
+        # Выбор предмета
         total_prob = sum(item.probability for item in items)
         rand = random.uniform(0, total_prob)
         cumulative = 0
@@ -189,7 +160,6 @@ async def open_case(user_id: int, case_id: int, is_test: bool = False):
             user.balance += win_amount
             user.total_games += 1
             user.total_wins += 1
-            user.last_seen = datetime.utcnow()
         
         opening = CaseOpening(
             user_id=user_id,
@@ -208,15 +178,13 @@ async def open_case(user_id: int, case_id: int, is_test: bool = False):
                 "id": selected.id,
                 "name": selected.name,
                 "image_url": selected.image_url,
-                "value": win_amount,
-                "rarity": selected.rarity,
-                "color": selected.color
+                "value": win_amount
             },
             "win_amount": win_amount,
             "new_balance": user.balance if not is_test else None
         }
 
-async def get_recent_openings(limit: int = 20):
+async def get_recent_openings(limit: int = 10):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(CaseOpening)

@@ -6,7 +6,8 @@ from datetime import datetime
 import os
 import random
 
-from config import config
+from config import Config
+config = Config()
 from database import *
 import admin_routes
 

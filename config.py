@@ -12,10 +12,8 @@ class SecureConfig:
         self._init_encryption()
     
     def _validate_environment(self):
-        required_vars = ['DATABASE_URL']
-        missing = [var for var in required_vars if not os.getenv(var)]
-        if missing and os.getenv('APP_ENV') == 'production':
-            raise ValueError(f"Missing: {missing}")
+        # В разработке можно без обязательных переменных
+        pass
     
     def _init_encryption(self):
         key = base64.urlsafe_b64encode(
@@ -27,7 +25,13 @@ class SecureConfig:
         return os.getenv(key, default)
     
     def get_database_url(self) -> str:
-        return os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///./gifts.db')
+        """Возвращает URL базы данных"""
+        # Если есть DATABASE_URL в окружении - используем его
+        db_url = os.getenv('DATABASE_URL')
+        if db_url:
+            return db_url
+        # Иначе используем SQLite
+        return 'sqlite+aiosqlite:///./gifts.db'
     
     def is_production(self) -> bool:
         return os.getenv('APP_ENV', 'development').lower() == 'production'

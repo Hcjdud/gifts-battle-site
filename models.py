@@ -1,87 +1,125 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, JSON, ForeignKey, DateTime, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+import os
+import random
 from datetime import datetime
 
-Base = declarative_base()
+from database import *
+from admin_routes import router as admin_router
 
-class User(Base):
-    __tablename__ = "users"
-    
-    id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, index=True)
-    balance = Column(Float, default=0.0)
-    total_deposited = Column(Float, default=0.0)
-    total_games = Column(Integer, default=0)
-    total_wins = Column(Integer, default=0)
-    is_premium = Column(Boolean, default=False)
-    is_admin = Column(Boolean, default=False)
-    is_banned = Column(Boolean, default=False)
-    ip_address = Column(String, nullable=True)
-    registered_at = Column(DateTime, default=datetime.utcnow)
-    last_seen = Column(DateTime, default=datetime.utcnow)
-    
-    transactions = relationship("Transaction", back_populates="user")
-    case_openings = relationship("CaseOpening", back_populates="user")
+# Создаем папки
+os.makedirs("uploads/cases", exist_ok=True)
+os.makedirs("uploads/items", exist_ok=True)
+os.makedirs("static", exist_ok=True)
+os.makedirs("templates", exist_ok=True)
 
-class Case(Base):
-    __tablename__ = "cases"
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True)
-    description = Column(Text)
-    price = Column(Float)
-    image_url = Column(String)
-    background_color = Column(String, default="#1a1a1a")
-    is_active = Column(Boolean, default=True)
-    sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    items = relationship("CaseItem", back_populates="case", cascade="all, delete-orphan")
-    openings = relationship("CaseOpening", back_populates="case")
+app = FastAPI(title="Gifts Battle")
 
-class CaseItem(Base):
-    __tablename__ = "case_items"
-    
-    id = Column(Integer, primary_key=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"))
-    name = Column(String)
-    description = Column(Text, nullable=True)
-    image_url = Column(String, nullable=True)
-    value = Column(Float)
-    probability = Column(Float)
-    rarity = Column(String, default="common")
-    min_win = Column(Float, nullable=True)
-    max_win = Column(Float, nullable=True)
-    color = Column(String, default="#ffffff")
-    
-    case = relationship("Case", back_populates="items")
-    openings = relationship("CaseOpening", back_populates="item")
+# Подключаем статику
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-class CaseOpening(Base):
-    __tablename__ = "case_openings"
-    
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    case_id = Column(Integer, ForeignKey("cases.id"))
-    item_id = Column(Integer, ForeignKey("case_items.id"))
-    win_amount = Column(Float)
-    is_test = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    user = relationship("User", back_populates="case_openings")
-    case = relationship("Case", back_populates="openings")
-    item = relationship("CaseItem", back_populates="openings")
+# Подключаем админку
+app.include_router(admin_router, prefix="/admin")
 
-class Transaction(Base):
-    __tablename__ = "transactions"
+# Главная страница
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    try:
+        with open("templates/index.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except:
+        return HTMLResponse(content="<h1>Главная страница</h1><p>Шаблон index.html не найден</p>")
+
+# Страница админки
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page():
+    try:
+        with open("templates/admin.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except:
+        return HTMLResponse(content="<h1>Админ-панель</h1><p>Шаблон admin.html не найден</p>")
+
+# API: получить все кейсы
+@app.get("/api/cases")
+async def get_cases():
+    cases = await get_all_cases(active_only=True)
+    result = []
+    for case in cases:
+        items = await get_case_items(case.id)
+        result.append({
+            "id": case.id,
+            "name": case.name,
+            "description": case.description,
+            "price": case.price,
+            "image_url": case.image_url or "/static/default-case.png",
+            "background_color": case.background_color,
+            "items_count": len(items)
+        })
+    return {"cases": result}
+
+# API: открыть кейс
+@app.post("/api/cases/{case_id}/open")
+async def open_case_api(case_id: int, request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
     
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    amount = Column(Float)
-    type = Column(String)
-    method = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID required")
     
-    user = relationship("User", back_populates="transactions")
+    result = await open_case(user_id, case_id, is_test=False)
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return result
+
+# API: последние открытия
+@app.get("/api/recent-openings")
+async def get_recent_openings_api(limit: int = 10):
+    openings = await get_recent_openings(limit)
+    result = []
+    for opening in openings:
+        result.append({
+            "username": opening.user.username if opening.user else "Аноним",
+            "case_name": opening.case.name if opening.case else "Кейс",
+            "item_name": opening.item.name if opening.item else "Предмет",
+            "win_amount": opening.win_amount
+        })
+    return {"openings": result}
+
+# API: пользователь
+@app.post("/api/user")
+async def get_or_create_user(request: Request):
+    data = await request.json()
+    username = data.get("username")
+    
+    if not username:
+        username = f"user_{random.randint(1000, 9999)}"
+    
+    user = await get_user_by_username(username)
+    
+    if not user:
+        user = await create_user(
+            username=username,
+            ip=request.client.host if request.client else None
+        )
+    
+    return {
+        "id": user.id,
+        "username": user.username,
+        "balance": float(user.balance),
+        "is_premium": user.is_premium,
+        "is_admin": user.is_admin
+    }
+
+# Проверка здоровья
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "time": datetime.now().isoformat()}
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
+    print("✅ Сервер запущен")

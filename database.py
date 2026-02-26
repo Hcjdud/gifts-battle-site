@@ -1,17 +1,32 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, update, delete, func
-from config import DATABASE_URL
+from config import config
 from models import Base, User, Case, CaseItem, CaseOpening, Transaction
 from datetime import datetime
 import random
+import os
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+# Определяем тип БД
+DATABASE_URL = config.get_database_url()
+is_sqlite = DATABASE_URL.startswith('sqlite')
+
+# Для SQLite нужны особые настройки
+if is_sqlite:
+    engine = create_async_engine(
+        DATABASE_URL, 
+        echo=True,
+        connect_args={"check_same_thread": False}  # Важно для SQLite
+    )
+else:
+    engine = create_async_engine(DATABASE_URL, echo=True)
+
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    print("✅ База данных инициализирована")
 
 # Пользователи
 async def get_user(user_id: int):
@@ -39,6 +54,7 @@ async def update_balance(user_id: int, amount: float, transaction_type: str = "a
             return None
         
         user.balance += amount
+        user.last_seen = datetime.utcnow()
         
         tx = Transaction(
             user_id=user_id,
@@ -173,6 +189,7 @@ async def open_case(user_id: int, case_id: int, is_test: bool = False):
             user.balance += win_amount
             user.total_games += 1
             user.total_wins += 1
+            user.last_seen = datetime.utcnow()
         
         opening = CaseOpening(
             user_id=user_id,

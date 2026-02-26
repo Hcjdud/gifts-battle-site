@@ -1,219 +1,46 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gifts Battle - Кейсы</title>
+    <title>Gifts Battle</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        
-        body {
-            background: #0f0f0f;
-            color: #fff;
-            min-height: 100vh;
-        }
-        
-        .app {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: #1a1a1a;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            border: 1px solid #333;
-        }
-        
-        .header h1 {
-            color: #e5b13b;
-        }
-        
-        .balance {
-            background: #252525;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-size: 18px;
-            font-weight: 600;
-            color: #e5b13b;
-            border: 1px solid #333;
-        }
-        
-        .cases-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        
-        .case-card {
-            background: #1a1a1a;
-            border-radius: 16px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 1px solid #333;
-        }
-        
-        .case-card:hover {
-            transform: translateY(-5px);
-            border-color: #e5b13b;
-        }
-        
-        .case-image {
-            height: 160px;
-            background-size: cover;
-            background-position: center;
-            background-color: #252525;
-        }
-        
-        .case-info {
-            padding: 16px;
-        }
-        
-        .case-info h3 {
-            color: #e5b13b;
-            margin-bottom: 8px;
-        }
-        
-        .case-info p {
-            color: #888;
-            font-size: 14px;
-            margin-bottom: 12px;
-        }
-        
-        .case-price {
-            font-size: 20px;
-            font-weight: 600;
-            color: #e5b13b;
-        }
-        
-        .recent {
-            background: #1a1a1a;
-            border-radius: 16px;
-            padding: 20px;
-            border: 1px solid #333;
-        }
-        
-        .recent h2 {
-            color: #e5b13b;
-            margin-bottom: 16px;
-        }
-        
-        .recent-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px;
-            border-bottom: 1px solid #333;
-        }
-        
-        .recent-item:last-child {
-            border-bottom: none;
-        }
-        
-        .recent-user {
-            color: #fff;
-            font-weight: 600;
-        }
-        
-        .recent-win {
-            color: #4caf50;
-            font-weight: 600;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.9);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: #1a1a1a;
-            border-radius: 24px;
-            padding: 30px;
-            max-width: 400px;
-            text-align: center;
-            border: 1px solid #e5b13b;
-        }
-        
-        .modal-content h2 {
-            color: #e5b13b;
-            margin-bottom: 20px;
-        }
-        
-        .win-item {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        
-        .win-amount {
-            font-size: 48px;
-            color: #e5b13b;
-            margin-bottom: 20px;
-        }
-        
-        .close-btn {
-            background: #e5b13b;
-            color: #000;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 30px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+        body { background: #0f0f0f; color: #fff; font-family: Arial; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; padding: 20px; background: #1a1a1a; border-radius: 10px; }
+        .balance { color: gold; font-size: 24px; }
+        .cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .case { background: #1a1a1a; border-radius: 10px; padding: 20px; cursor: pointer; border: 1px solid #333; }
+        .case:hover { border-color: gold; }
+        .price { color: gold; font-size: 20px; margin: 10px 0; }
+        .recent { margin-top: 30px; background: #1a1a1a; padding: 20px; border-radius: 10px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #1a1a1a; padding: 30px; border-radius: 20px; text-align: center; }
+        .win { font-size: 40px; color: gold; margin: 20px 0; }
     </style>
 </head>
 <body>
-    <div class="app">
-        <div class="header">
-            <h1>🎮 Gifts Battle</h1>
-            <div class="balance" id="balance">0 ⭐</div>
-        </div>
-        
-        <div class="cases-grid" id="casesGrid">
-            <div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #888;">
-                Загрузка кейсов...
-            </div>
-        </div>
-        
-        <div class="recent">
-            <h2>🔥 Последние открытия</h2>
-            <div id="recentOpenings"></div>
-        </div>
+    <div class="header">
+        <h1>🎮 Gifts Battle</h1>
+        <div class="balance" id="balance">0 ⭐</div>
     </div>
     
-    <div class="modal" id="resultModal">
+    <div class="cases" id="cases"></div>
+    
+    <div class="recent">
+        <h2>🔥 Последние открытия</h2>
+        <div id="recent"></div>
+    </div>
+    
+    <div class="modal" id="modal">
         <div class="modal-content">
-            <h2 id="resultTitle">Открытие кейса</h2>
-            <div class="win-item" id="resultItem"></div>
-            <div class="win-amount" id="resultAmount">0 ⭐</div>
-            <button class="close-btn" onclick="closeModal()">Ок</button>
+            <h2 id="modalTitle"></h2>
+            <div class="win" id="modalWin"></div>
+            <button onclick="closeModal()" style="padding: 10px 30px; background: gold; border: none; border-radius: 5px;">OK</button>
         </div>
     </div>
     
     <script>
-        let currentUser = null;
+        let user = null;
         
         async function init() {
             await login();
@@ -222,91 +49,75 @@
         }
         
         async function login() {
-            let username = localStorage.getItem('username');
-            if (!username) {
-                username = 'user_' + Math.floor(Math.random() * 10000);
-                localStorage.setItem('username', username);
+            let name = localStorage.getItem('username');
+            if (!name) {
+                name = 'user_' + Math.floor(Math.random() * 10000);
+                localStorage.setItem('username', name);
             }
             
-            const response = await fetch('/api/user', {
+            const res = await fetch('/api/user', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: username})
+                body: JSON.stringify({username: name})
             });
             
-            currentUser = await response.json();
-            document.getElementById('balance').textContent = currentUser.balance + ' ⭐';
+            user = await res.json();
+            document.getElementById('balance').innerText = user.balance + ' ⭐';
         }
         
         async function loadCases() {
-            const response = await fetch('/api/cases');
-            const data = await response.json();
+            const res = await fetch('/api/cases');
+            const data = await res.json();
             
-            const grid = document.getElementById('casesGrid');
-            if (data.cases.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 50px; color: #888;">Пока нет кейсов</div>';
-                return;
-            }
-            
-            grid.innerHTML = data.cases.map(c => `
-                <div class="case-card" onclick="openCase(${c.id})">
-                    <div class="case-image" style="background-image: url('${c.image_url}')"></div>
-                    <div class="case-info">
+            let html = '';
+            data.cases.forEach(c => {
+                html += `
+                    <div class="case" onclick="openCase(${c.id})">
                         <h3>${c.name}</h3>
                         <p>${c.description}</p>
-                        <div class="case-price">${c.price} ⭐</div>
+                        <div class="price">${c.price} ⭐</div>
+                        <div>📦 ${c.items_count} предметов</div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            });
+            document.getElementById('cases').innerHTML = html;
         }
         
         async function loadRecent() {
-            const response = await fetch('/api/recent-openings?limit=10');
-            const data = await response.json();
+            const res = await fetch('/api/recent-openings');
+            const data = await res.json();
             
-            const container = document.getElementById('recentOpenings');
-            container.innerHTML = data.openings.map(o => `
-                <div class="recent-item">
-                    <span class="recent-user">${o.username}</span>
-                    <span>${o.case_name} → ${o.item_name}</span>
-                    <span class="recent-win">+${o.win_amount} ⭐</span>
-                </div>
-            `).join('');
+            let html = '';
+            data.openings.forEach(o => {
+                html += `<div>${o.username} → ${o.item_name} +${o.win_amount}⭐</div>`;
+            });
+            document.getElementById('recent').innerHTML = html;
         }
         
-        async function openCase(caseId) {
-            if (!currentUser) return;
-            
-            const response = await fetch(`/api/cases/${caseId}/open`, {
+        async function openCase(id) {
+            const res = await fetch(`/api/cases/${id}/open`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({user_id: currentUser.id})
+                body: JSON.stringify({user_id: user.id})
             });
             
-            if (!response.ok) {
-                const error = await response.json();
-                alert(error.detail || 'Ошибка открытия кейса');
-                return;
-            }
+            if (!res.ok) return alert('Ошибка!');
             
-            const result = await response.json();
+            const data = await res.json();
+            document.getElementById('modalTitle').innerText = 'Вы выиграли!';
+            document.getElementById('modalWin').innerHTML = `${data.item.name}<br>+${data.win_amount} ⭐`;
+            document.getElementById('modal').classList.add('active');
             
-            document.getElementById('resultTitle').textContent = 'Вы выиграли!';
-            document.getElementById('resultItem').textContent = result.item.name;
-            document.getElementById('resultAmount').textContent = '+' + result.win_amount + ' ⭐';
-            document.getElementById('resultModal').classList.add('active');
-            
-            currentUser.balance = result.new_balance;
-            document.getElementById('balance').textContent = result.new_balance + ' ⭐';
-            
+            user.balance = data.new_balance;
+            document.getElementById('balance').innerText = user.balance + ' ⭐';
             loadRecent();
         }
         
         function closeModal() {
-            document.getElementById('resultModal').classList.remove('active');
+            document.getElementById('modal').classList.remove('active');
         }
         
         init();
     </script>
 </body>
-              </html>
+</html>
